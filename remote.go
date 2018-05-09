@@ -1,10 +1,15 @@
 package runcmd
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
+	"golang.org/x/crypto/ssh/knownhosts"
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -19,24 +24,55 @@ type Remote struct {
 	serverConn *ssh.Client
 }
 
-func NewRemoteKeyAuthRunner(user, host, keyLocation string) (*Remote, error) {
+func NewRemoteKeyAuthRunner(user, host, keyLocation, keyPass string) (*Remote, error) {
 	if _, err := os.Stat(keyLocation); os.IsNotExist(err) {
 		return nil, err
 	}
-	key, err := ioutil.ReadFile(keyLocation)
+	pemBytes, err := ioutil.ReadFile(keyLocation)
 	if err != nil {
 		return nil, err
 	}
 
-	signer, err := ssh.ParsePrivateKey(key)
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, errors.New("no key found")
+	}
+
+	var signer ssh.Signer
+	if x509.IsEncryptedPEMBlock(block) {
+		block.Bytes, err = x509.DecryptPEMBlock(block, []byte(keyPass))
+		if err != nil {
+			return nil, err
+		}
+
+		key, err := ParsePemBlock(block)
+		if err != nil {
+			return nil, err
+		}
+
+		signer, err = ssh.NewSignerFromKey(key)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		signer, err = ssh.ParsePrivateKey(pemBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	keyDir := filepath.Dir(keyLocation)
+
+	hkCallback, err := knownhosts.New(keyDir + "/known_hosts")
 	if err != nil {
 		return nil, err
 	}
-
 	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		User:            user,
+		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		HostKeyCallback: hkCallback,
 	}
+
 	server, err := ssh.Dial("tcp", host, config)
 	if err != nil {
 		return nil, err
@@ -138,4 +174,18 @@ func (cmd *RemoteCmd) SetStderr(buffer io.Writer) {
 
 func (cmd *RemoteCmd) GetCommandLine() string {
 	return cmd.cmdline
+}
+
+// ref golang.org/x/crypto/ssh/keys.go#ParseRawPrivateKey.
+func ParsePemBlock(block *pem.Block) (interface{}, error) {
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
+	case "EC PRIVATE KEY":
+		return x509.ParseECPrivateKey(block.Bytes)
+	case "DSA PRIVATE KEY":
+		return ssh.ParseDSAPrivateKey(block.Bytes)
+	default:
+		return nil, fmt.Errorf("rtop: unsupported key type %q", block.Type)
+	}
 }

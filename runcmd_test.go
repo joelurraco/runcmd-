@@ -19,14 +19,15 @@ var (
 	cmdPipeIn     = "/usr/bin/tee /tmp/blah"
 
 	// Change it before running the tests:
-	user = "user"
-	host = "127.0.0.1:22"
-	key  = "/home/user/.ssh/id_rsa"
-	pass = "somepass"
+	user    = "user"
+	host    = "127.0.0.1:22"
+	key     = "/home/user/.ssh/id_rsa"
+	keyPass = "keypass"
+	pass    = "somepass"
 )
 
 func TestKeyAuth(t *testing.T) {
-	rRunner, err := NewRemoteKeyAuthRunner(user, host, key)
+	rRunner, err := NewRemoteKeyAuthRunner(user, host, key, keyPass)
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,7 +62,7 @@ func TestLocalRun(t *testing.T) {
 }
 
 func TestRemoteRun(t *testing.T) {
-	rRunner, err := NewRemoteKeyAuthRunner(user, host, key)
+	rRunner, err := NewRemoteKeyAuthRunner(user, host, key, keyPass)
 	if err != nil {
 		t.Error(err)
 	}
@@ -81,7 +82,7 @@ func TestLocalStartWait(t *testing.T) {
 }
 
 func TestRemoteStartWait(t *testing.T) {
-	rRunner, err := NewRemoteKeyAuthRunner(user, host, key)
+	rRunner, err := NewRemoteKeyAuthRunner(user, host, key, keyPass)
 	if err != nil {
 		t.Error(err)
 	}
@@ -205,7 +206,7 @@ func testPipe(localToRemote bool) error {
 	if err != nil {
 		return err
 	}
-	rRunner, err := NewRemoteKeyAuthRunner(user, host, key)
+	rRunner, err := NewRemoteKeyAuthRunner(user, host, key, keyPass)
 	if err != nil {
 		return err
 	}
