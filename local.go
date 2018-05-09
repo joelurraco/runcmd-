@@ -46,6 +46,16 @@ func (cmd *LocalCmd) Wait() error {
 	return cmd.cmd.Wait()
 }
 
+// Setenv sets an environment variable that will be applied to any command executed by Shell or Run.
+// Each env entry is of the form "key=value".
+// If env contains duplicate environment keys, only the last
+// value in the slice for each duplicate key is used.
+func (cmd *LocalCmd) Setenv(env []string) error {
+	cmd.cmd.Env = env
+
+	return nil
+}
+
 func (cmd *LocalCmd) StdinPipe() (io.WriteCloser, error) {
 	return cmd.cmd.StdinPipe()
 }

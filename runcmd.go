@@ -21,6 +21,7 @@ type CmdWorker interface {
 	Run() ([]string, error)
 	Start() error
 	Wait() error
+	Setenv([]string) error
 	StdinPipe() (io.WriteCloser, error)
 	StdoutPipe() (io.Reader, error)
 	StderrPipe() (io.Reader, error)
