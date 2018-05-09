@@ -5,8 +5,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
-	"code.google.com/p/go.crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 type RemoteCmd struct {
@@ -18,18 +19,20 @@ type Remote struct {
 	serverConn *ssh.Client
 }
 
-func NewRemoteKeyAuthRunner(user, host, key string) (*Remote, error) {
-	if _, err := os.Stat(key); os.IsNotExist(err) {
+func NewRemoteKeyAuthRunner(user, host, keyLocation string) (*Remote, error) {
+	if _, err := os.Stat(keyLocation); os.IsNotExist(err) {
 		return nil, err
 	}
-	pemBytes, err := ioutil.ReadFile(key)
+	key, err := ioutil.ReadFile(keyLocation)
 	if err != nil {
 		return nil, err
 	}
-	signer, err := ssh.ParsePrivateKey(pemBytes)
+
+	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
 		return nil, err
 	}
+
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{ssh.PublicKeys(signer)},
@@ -91,6 +94,26 @@ func (cmd *RemoteCmd) Wait() error {
 	defer cmd.session.Close()
 
 	return cmd.session.Wait()
+}
+
+// Setenv sets an environment variable that will be applied to any command executed by Shell or Run.
+// Each env entry is of the form "key=value".
+// If env contains duplicate environment keys, only the last
+// value in the slice for each duplicate key is used.
+func (cmd *RemoteCmd) Setenv(env []string) error {
+	for _, e := range env {
+		res := strings.Split(e, "=")
+		if len(res) != 2 {
+			continue
+		}
+
+		err := cmd.session.Setenv(res[0], res[1])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (cmd *RemoteCmd) StdinPipe() (io.WriteCloser, error) {
