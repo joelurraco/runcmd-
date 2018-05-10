@@ -24,6 +24,10 @@ type Remote struct {
 	serverConn *ssh.Client
 }
 
+func NewRemote(conn *ssh.Client) *Remote {
+	return &Remote{conn}
+}
+
 func NewRemoteKeyAuthRunner(user, host, keyLocation, keyPass string) (*Remote, error) {
 	if _, err := os.Stat(keyLocation); os.IsNotExist(err) {
 		return nil, err
