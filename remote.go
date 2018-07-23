@@ -15,6 +15,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var _ Runner = &Remote{}
+
 type RemoteCmd struct {
 	cmdline string
 	session *ssh.Session
@@ -22,10 +24,23 @@ type RemoteCmd struct {
 
 type Remote struct {
 	serverConn *ssh.Client
+	host       string
+	port       string
 }
 
-func NewRemote(conn *ssh.Client) *Remote {
-	return &Remote{conn}
+func NewRemote(conn *ssh.Client, host string) *Remote {
+	hostArr := strings.Split(host, ":")
+	port := "22"
+	if len(hostArr) > 1 {
+		port = hostArr[1]
+	}
+
+	runner := &Remote{
+		serverConn: conn,
+		host:       hostArr[0],
+		port:       port,
+	}
+	return runner
 }
 
 func NewRemoteKeyAuthRunner(user, host, keyLocation, keyPass string) (*Remote, error) {
@@ -81,7 +96,19 @@ func NewRemoteKeyAuthRunner(user, host, keyLocation, keyPass string) (*Remote, e
 	if err != nil {
 		return nil, err
 	}
-	return &Remote{server}, nil
+
+	hostArr := strings.Split(host, ":")
+	port := "22"
+	if len(hostArr) > 1 {
+		port = hostArr[1]
+	}
+
+	runner := &Remote{
+		serverConn: server,
+		host:       hostArr[0],
+		port:       port,
+	}
+	return runner, nil
 }
 
 func NewRemotePassAuthRunner(user, host, password string) (*Remote, error) {
@@ -93,7 +120,19 @@ func NewRemotePassAuthRunner(user, host, password string) (*Remote, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Remote{server}, nil
+
+	hostArr := strings.Split(host, ":")
+	port := "22"
+	if len(hostArr) > 1 {
+		port = hostArr[1]
+	}
+
+	runner := &Remote{
+		serverConn: server,
+		host:       hostArr[0],
+		port:       port,
+	}
+	return runner, nil
 }
 
 func (runner *Remote) Command(cmdline string) (CmdWorker, error) {
@@ -114,6 +153,14 @@ func (runner *Remote) Command(cmdline string) (CmdWorker, error) {
 
 func (runner *Remote) CloseConnection() error {
 	return runner.serverConn.Close()
+}
+
+func (runner *Remote) Host() string {
+	if runner == nil {
+		return ""
+	}
+
+	return runner.host
 }
 
 func (cmd *RemoteCmd) Run() ([]string, error) {

@@ -15,6 +15,7 @@ type ExecError struct {
 
 type Runner interface {
 	Command(cmd string) (CmdWorker, error)
+	Host() string
 }
 
 type CmdWorker interface {

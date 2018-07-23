@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+var _ Runner = &Local{}
+
 type LocalCmd struct {
 	cmdline string
 	cmd     *exec.Cmd
@@ -28,6 +30,14 @@ func (runner *Local) Command(cmdline string) (CmdWorker, error) {
 		cmdline: cmdline,
 		cmd:     command,
 	}, nil
+}
+
+func (runner *Local) Host() string {
+	if runner == nil {
+		return ""
+	}
+
+	return "127.0.0.1"
 }
 
 func (cmd *LocalCmd) Run() ([]string, error) {
